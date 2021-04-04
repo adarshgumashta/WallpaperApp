@@ -48,6 +48,10 @@ inline fun <reified T : Activity> Activity.startActivity(block: Intent.() -> Uni
     overridePendingTransition(R.anim.pull_in_right, R.anim.push_out_left)
 }
 
+inline fun <T : ViewBinding> AppCompatActivity.viewBinding(
+    crossinline bindingInflater: (LayoutInflater) -> T
+) = lazy(LazyThreadSafetyMode.NONE) { bindingInflater.invoke(layoutInflater) }
+
 fun Activity.getImageUri(pic: CommonPic?): Uri {
     val bitmap = getBitmap(pic)
     val bytes = ByteArrayOutputStream()
@@ -70,6 +74,30 @@ fun Activity.getBitmap(pic: CommonPic?): Bitmap? {
     }
     return bitmap
 }
+
+fun Activity.saveImage(url: String, progressBar: ProgressBar) = Glide.with(this)
+    .asBitmap()
+    .load(url)
+    .into(object : CustomTarget<Bitmap>() {
+        override fun onResourceReady(bitmap: Bitmap, transition: Transition<in Bitmap>?) {
+            CoroutineScope(Dispatchers.IO).launch {
+                withContext(Dispatchers.IO) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        bitmap.saveImageQ(this@saveImage, progressBar)
+                    } else {
+                        bitmap.saveImage(this@saveImage, progressBar)
+                    }
+                }
+            }
+        }
+
+        override fun onLoadStarted(placeholder: Drawable?) {
+            super.onLoadStarted(placeholder)
+            progressBar.visible()
+        }
+
+        override fun onLoadCleared(placeholder: Drawable?) {}
+    })
 
 fun Context.isNetworkAvailable() = (getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager?)
     ?.activeNetworkInfo?.isConnectedOrConnecting ?: false
@@ -116,30 +144,6 @@ fun Context.share(text: String?) {
 }
 
 fun Context.shortToast(message: String) = makeText(this, message, LENGTH_SHORT).show()
-
-fun Activity.saveImage(url: String, progressBar: ProgressBar) = Glide.with(this)
-    .asBitmap()
-    .load(url)
-    .into(object : CustomTarget<Bitmap>() {
-        override fun onResourceReady(bitmap: Bitmap, transition: Transition<in Bitmap>?) {
-            CoroutineScope(Dispatchers.IO).launch {
-                withContext(Dispatchers.IO) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        bitmap.saveImageQ(this@saveImage, progressBar)
-                    } else {
-                        bitmap.saveImage(this@saveImage, progressBar)
-                    }
-                }
-            }
-        }
-
-        override fun onLoadStarted(placeholder: Drawable?) {
-            super.onLoadStarted(placeholder)
-            progressBar.visible()
-        }
-
-        override fun onLoadCleared(placeholder: Drawable?) {}
-    })
 
 private fun Bitmap.saveImage(activity: Activity, progressBar: ProgressBar) {
     val root = getExternalStoragePublicDirectory(DIRECTORY_PICTURES).toString()
@@ -202,10 +206,6 @@ fun View.gone() { visibility = GONE }
 
 fun Long.runDelayed(action: () -> Unit) = Handler(getMainLooper())
     .postDelayed(action, TimeUnit.MILLISECONDS.toMillis(this))
-
-inline fun <T : ViewBinding> AppCompatActivity.viewBinding(
-    crossinline bindingInflater: (LayoutInflater) -> T
-) = lazy(LazyThreadSafetyMode.NONE) { bindingInflater.invoke(layoutInflater) }
 
 fun SharedPreferences.putAny(key: String, any: Any) {
     when (any) {
