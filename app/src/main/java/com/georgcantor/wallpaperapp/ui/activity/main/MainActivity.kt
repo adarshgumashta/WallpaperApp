@@ -120,24 +120,21 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     }
 
     override fun onBackPressed() {
-        when {
-            binding.drawerLayout.isDrawerOpen(START) -> binding.drawerLayout.closeDrawer(START)
-            else -> {
-                when (currentNavController?.value?.currentDestination?.label) {
-                    getString(R.string.bmw) -> {
-                        if (backButtonPressedTwice) {
-                            super.onBackPressed()
-                        } else {
-                            backButtonPressedTwice = true
-                            shortToast(getString(R.string.press_back))
-                            lifecycleScope.launch {
-                                delay(2000)
-                                backButtonPressedTwice = false
-                            }
+        if (binding.drawerLayout.isDrawerOpen(START)) binding.drawerLayout.closeDrawer(START)
+        else {
+            when (currentNavController?.value?.currentDestination?.label) {
+                getString(R.string.bmw) -> {
+                    if (backButtonPressedTwice) super.onBackPressed()
+                    else {
+                        backButtonPressedTwice = true
+                        shortToast(getString(R.string.press_back))
+                        lifecycleScope.launch {
+                            delay(2000)
+                            backButtonPressedTwice = false
                         }
                     }
-                    else -> super.onBackPressed()
                 }
+                else -> super.onBackPressed()
             }
         }
     }
